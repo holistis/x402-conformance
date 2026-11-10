@@ -21,8 +21,8 @@ export type FieldStatus = "present" | "missing" | "wrong_type" | "invalid_value"
  * Schemes the x402 spec currently defines (specs/x402-specification-v1.md section 5.1.2
  * and specs/x402-specification-v2.md): "exact" is the only one in either spec as of this
  * writing. A field that is a non-empty string but not in this list (for example a typo
- * like "exac") previously passed as "present"; it is now "invalid_value". Extend this
- * list if the spec adds a scheme.
+ * like "exac") is "invalid_value", not "present". Extend this list if the spec adds a
+ * scheme.
  */
 const KNOWN_SCHEMES = new Set(["exact"]);
 
@@ -121,9 +121,9 @@ function statusOfScheme(value: unknown): FieldStatus {
 
 /**
  * network and asset are both non-empty strings, but they mean opposite things: asset is
- * an EVM contract address, network is a chain identifier and must never look like one. A
- * caller that accidentally swaps the two fields (for example a config bug) previously
- * passed both as present since each was merely a non-empty string.
+ * an EVM contract address, network is a chain identifier and must never look like one.
+ * Checking the shape, not just presence, catches the two fields being swapped (for
+ * example a config bug).
  */
 function statusOfNetwork(value: unknown): FieldStatus {
   const base = statusOf(value, "string");
@@ -211,10 +211,9 @@ function checkAcceptItem(
 
 /**
  * When a server emits an accepts[] in BOTH the v1 body and the v2 PAYMENT-REQUIRED header
- * (transportStyle "both"), the two were previously never cross-checked: checkHttpEndpoint
- * silently picked the body and ignored the header copy. A server (or a proxy sitting in
- * front of it) that lets the two drift apart on amount/payTo/scheme/asset is a real
- * integrity problem a caller relying on just one channel would never see.
+ * (transportStyle "both"), the two must agree. A server (or a proxy sitting in front of
+ * it) that lets the two drift apart on amount/payTo/scheme/asset is a real integrity
+ * problem a caller relying on just one channel would never see.
  */
 function transportsAgree(bodyAccepts: PaymentRequirementsLoose[], headerAccepts: PaymentRequirementsLoose[]): boolean {
   if (bodyAccepts.length !== headerAccepts.length) return false;
